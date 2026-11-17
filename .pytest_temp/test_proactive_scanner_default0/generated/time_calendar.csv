@@ -1,0 +1,77 @@
+event_id,start_ts,end_ts,duration_minutes,domain_tag,block_type,title_raw,priority,completed_flag,source_system
+evt_20261019_01,2026-10-19 08:00:00,2026-10-19 10:30:00,150,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261019_02,2026-10-19 14:00:00,2026-10-19 15:30:00,90,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261019_03,2026-10-19 18:00:00,2026-10-19 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261020_01,2026-10-20 08:00:00,2026-10-20 10:00:00,120,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261020_02,2026-10-20 14:00:00,2026-10-20 15:00:00,60,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261020_03,2026-10-20 18:00:00,2026-10-20 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261021_01,2026-10-21 08:00:00,2026-10-21 10:30:00,150,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261021_02,2026-10-21 14:00:00,2026-10-21 15:00:00,60,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261021_03,2026-10-21 18:00:00,2026-10-21 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261022_01,2026-10-22 08:00:00,2026-10-22 11:00:00,180,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261022_02,2026-10-22 14:00:00,2026-10-22 15:30:00,90,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261022_03,2026-10-22 18:00:00,2026-10-22 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261023_01,2026-10-23 08:00:00,2026-10-23 10:30:00,150,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,False,synthetic
+evt_20261023_02,2026-10-23 14:00:00,2026-10-23 15:30:00,90,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261023_03,2026-10-23 18:00:00,2026-10-23 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261024_01,2026-10-24 10:00:00,2026-10-24 12:00:00,120,personal,LEISURE,Caminata y tiempo familiar,medium,True,synthetic
+evt_20261025_01,2026-10-25 10:00:00,2026-10-25 12:00:00,120,personal,LEISURE,Caminata y tiempo familiar,medium,True,synthetic
+evt_20261026_01,2026-10-26 08:00:00,2026-10-26 11:00:00,180,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261026_02,2026-10-26 14:00:00,2026-10-26 16:00:00,120,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261026_03,2026-10-26 18:00:00,2026-10-26 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261027_01,2026-10-27 08:00:00,2026-10-27 10:30:00,150,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261027_02,2026-10-27 14:00:00,2026-10-27 16:00:00,120,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261027_03,2026-10-27 18:00:00,2026-10-27 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261028_01,2026-10-28 08:00:00,2026-10-28 10:00:00,120,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261028_02,2026-10-28 14:00:00,2026-10-28 16:00:00,120,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261028_03,2026-10-28 18:00:00,2026-10-28 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261029_01,2026-10-29 08:00:00,2026-10-29 10:00:00,120,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261029_02,2026-10-29 14:00:00,2026-10-29 15:30:00,90,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261029_03,2026-10-29 18:00:00,2026-10-29 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261030_01,2026-10-30 08:00:00,2026-10-30 09:30:00,90,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,False,synthetic
+evt_20261030_02,2026-10-30 14:00:00,2026-10-30 15:00:00,60,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261030_03,2026-10-30 18:00:00,2026-10-30 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261031_01,2026-10-31 10:00:00,2026-10-31 12:00:00,120,personal,LEISURE,Caminata y tiempo familiar,medium,True,synthetic
+evt_20261101_01,2026-11-01 10:00:00,2026-11-01 12:00:00,120,personal,LEISURE,Caminata y tiempo familiar,medium,True,synthetic
+evt_20261102_01,2026-11-02 08:00:00,2026-11-02 12:00:00,240,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261102_02,2026-11-02 14:00:00,2026-11-02 15:00:00,60,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261102_03,2026-11-02 18:00:00,2026-11-02 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261103_01,2026-11-03 08:00:00,2026-11-03 10:30:00,150,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,False,synthetic
+evt_20261103_02,2026-11-03 14:00:00,2026-11-03 15:30:00,90,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261103_03,2026-11-03 18:00:00,2026-11-03 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261104_01,2026-11-04 08:00:00,2026-11-04 10:00:00,120,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261104_02,2026-11-04 14:00:00,2026-11-04 15:30:00,90,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261104_03,2026-11-04 18:00:00,2026-11-04 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261105_01,2026-11-05 08:00:00,2026-11-05 11:00:00,180,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261105_02,2026-11-05 14:00:00,2026-11-05 16:00:00,120,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261105_03,2026-11-05 18:00:00,2026-11-05 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261106_01,2026-11-06 08:00:00,2026-11-06 10:00:00,120,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261106_02,2026-11-06 14:00:00,2026-11-06 16:00:00,120,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261106_03,2026-11-06 18:00:00,2026-11-06 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261107_01,2026-11-07 10:00:00,2026-11-07 12:00:00,120,personal,LEISURE,Caminata y tiempo familiar,medium,True,synthetic
+evt_20261108_01,2026-11-08 10:00:00,2026-11-08 12:00:00,120,personal,LEISURE,Caminata y tiempo familiar,medium,True,synthetic
+evt_20261109_01,2026-11-09 08:00:00,2026-11-09 10:00:00,120,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261109_02,2026-11-09 14:00:00,2026-11-09 16:30:00,150,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261109_03,2026-11-09 18:00:00,2026-11-09 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261110_01,2026-11-10 08:00:00,2026-11-10 10:00:00,120,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261110_02,2026-11-10 14:00:00,2026-11-10 15:30:00,90,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261110_03,2026-11-10 18:00:00,2026-11-10 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261111_01,2026-11-11 08:00:00,2026-11-11 11:00:00,180,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261111_02,2026-11-11 14:00:00,2026-11-11 15:30:00,90,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261111_03,2026-11-11 18:00:00,2026-11-11 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261112_01,2026-11-12 08:00:00,2026-11-12 11:00:00,180,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261112_02,2026-11-12 14:00:00,2026-11-12 15:30:00,90,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261112_03,2026-11-12 18:00:00,2026-11-12 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261113_01,2026-11-13 08:00:00,2026-11-13 10:00:00,120,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,False,synthetic
+evt_20261113_02,2026-11-13 14:00:00,2026-11-13 16:00:00,120,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261113_03,2026-11-13 18:00:00,2026-11-13 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261114_01,2026-11-14 10:00:00,2026-11-14 12:00:00,120,personal,LEISURE,Caminata y tiempo familiar,medium,True,synthetic
+evt_20261114_02,2026-11-14 16:00:00,2026-11-14 17:30:00,90,learning,DEEP_WORK,Estudio personal datos y Python,medium,True,synthetic
+evt_20261115_01,2026-11-15 10:00:00,2026-11-15 12:00:00,120,personal,LEISURE,Caminata y tiempo familiar,medium,True,synthetic
+evt_20261115_02,2026-11-15 16:00:00,2026-11-15 17:30:00,90,learning,DEEP_WORK,Estudio personal datos y Python,medium,True,synthetic
+evt_20261116_01,2026-11-16 08:00:00,2026-11-16 10:00:00,120,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,True,synthetic
+evt_20261116_02,2026-11-16 14:00:00,2026-11-16 15:30:00,90,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261116_03,2026-11-16 18:00:00,2026-11-16 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic
+evt_20261117_01,2026-11-17 08:00:00,2026-11-17 10:00:00,120,work,DEEP_WORK,Sesion arquitectura LUP con Juan Perez,high,False,synthetic
+evt_20261117_02,2026-11-17 14:00:00,2026-11-17 16:30:00,150,work,MEETING,Sincronizacion equipo producto,medium,True,synthetic
+evt_20261117_03,2026-11-17 18:00:00,2026-11-17 19:00:00,60,personal,LEISURE,Lectura y desconexion vespertina,low,True,synthetic

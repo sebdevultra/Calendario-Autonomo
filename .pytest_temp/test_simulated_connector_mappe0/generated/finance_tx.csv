@@ -1,0 +1,29 @@
+tx_id,tx_timestamp,amount,currency,direction,category_raw,merchant_raw,account_alias,is_discretionary,notes_raw,source_system
+tx_20261023_01,2026-10-23 13:50:00,23276.35,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261024_01,2026-10-24 13:54:00,35660.98,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261024_02,2026-10-24 19:43:00,94636.78,COP,expense,ENTERTAINMENT,Restaurante Mirador,Tarjeta Credito ****7744,True,Salida fin de semana con amigos,synthetic
+tx_20261025_01,2026-10-25 19:07:00,131580.78,COP,expense,ENTERTAINMENT,Restaurante Mirador,Tarjeta Credito ****7744,True,Salida fin de semana con amigos,synthetic
+tx_20261027_01,2026-10-27 13:33:00,37299.98,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261028_01,2026-10-28 13:54:00,27627.68,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261029_01,2026-10-29 13:42:00,31237.54,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261030_01,2026-10-30 13:21:00,41237.95,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261031_01,2026-10-31 13:42:00,26047.27,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261031_02,2026-10-31 19:18:00,133529.14,COP,expense,ENTERTAINMENT,Restaurante Mirador,Tarjeta Credito ****7744,True,Salida fin de semana con amigos,synthetic
+tx_20261101_01,2026-11-01 09:37:00,3200000.0,COP,income,SALARY,Empleador Demo SAS,Cuenta Nomina ****4821,False,Pago quincenal de nomina,synthetic
+tx_20261101_02,2026-11-01 10:46:00,350000.0,COP,saving,EMERGENCY_FUND,Bolsillo Ahorro Local,Cuenta Ahorros ****9012,False,Transferencia quincenal programada,synthetic
+tx_20261101_03,2026-11-01 13:02:00,28597.22,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261101_04,2026-11-01 20:10:00,39136.12,COP,expense,DELIVERY,App Domicilios - Repartidor Ana Diaz,Tarjeta Credito ****7744,True,Pedido nocturno a domicilio,synthetic
+tx_20261101_05,2026-11-01 19:34:00,139009.61,COP,expense,ENTERTAINMENT,Restaurante Mirador,Tarjeta Credito ****7744,True,Salida fin de semana con amigos,synthetic
+tx_20261102_01,2026-11-02 13:01:00,31814.14,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261103_01,2026-11-03 13:25:00,24171.51,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261105_01,2026-11-05 08:17:00,1500000.0,COP,expense,HOUSING,Inmobiliaria Norte - Carlos Ruiz,Cuenta Nomina ****4821,False,Canon mensual apartamento,synthetic
+tx_20261105_02,2026-11-05 11:25:00,240000.0,COP,expense,UTILITIES,Energia y Conectividad Ciudad,Cuenta Nomina ****4821,False,Servicios publicos e internet,synthetic
+tx_20261106_01,2026-11-06 13:18:00,27249.21,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261106_02,2026-11-06 16:55:00,680000.0,COP,expense,SHOPPING,Tienda Tecnologia Centro,Tarjeta Credito ****7744,True,Compra impulsiva de alto monto fuera de linea base,synthetic
+tx_20261107_01,2026-11-07 19:55:00,76511.8,COP,expense,ENTERTAINMENT,Restaurante Mirador,Tarjeta Credito ****7744,True,Salida fin de semana con amigos,synthetic
+tx_20261108_01,2026-11-08 13:50:00,25995.51,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261109_01,2026-11-09 13:29:00,40496.17,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261110_01,2026-11-10 13:49:00,37695.27,COP,expense,GROCERIES,Supermercado Central #12,Tarjeta Debito ****3310,False,Compra de alimentos diarios,synthetic
+tx_20261110_02,2026-11-10 20:01:00,68177.14,COP,expense,DELIVERY,App Domicilios - Repartidor Ana Diaz,Tarjeta Credito ****7744,True,Pedido nocturno a domicilio,synthetic
+tx_cap_5c2a0529ab58,2026-11-10 20:41:00,60683.38,COP,expense,DELIVERY,App Domicilios Norte,Tarjeta Credito ****7744,True,Importado desde Banco Simulado Central,simulated_bank_feed
+tx_cap_2d510ca878a2,2026-11-09 14:34:00,44007.17,COP,expense,DELIVERY,App Domicilios Norte,Tarjeta Credito ****7744,True,Importado desde Banco Simulado Central,simulated_bank_feed
