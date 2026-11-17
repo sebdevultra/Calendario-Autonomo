@@ -83,6 +83,7 @@ class FlushResult(BaseModel):
     by_domain: dict[str, int] = Field(default_factory=dict)
     decisions_synced: int = 0
     outcomes_synced: int = 0
+    agent_actions_synced: int = 0
 
 
 def _now_local(tz_name: str) -> datetime:
@@ -108,7 +109,7 @@ def _append_csv_rows(csv_path: Path, fieldnames: list[str], rows: list[dict[str,
     file_exists = csv_path.exists()
     csv_path.parent.mkdir(parents=True, exist_ok=True)
     with csv_path.open("a", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=fieldnames)
+        writer = csv.DictWriter(handle, fieldnames=fieldnames, extrasaction="ignore")
         if not file_exists:
             writer.writeheader()
         writer.writerows(rows)
@@ -215,6 +216,7 @@ class BatchIngestor:
         grouped: dict[str, list[dict[str, Any]]],
         decisions: list[dict[str, Any]],
         outcomes: list[dict[str, Any]],
+        agent_actions: list[dict[str, Any]] | None = None,
     ) -> None:
         conn = self._open_snowflake_connection()
         try:
@@ -381,6 +383,86 @@ class BatchIngestor:
                             for o in outcomes
                         ],
                     )
+                if agent_actions:
+                    cur.executemany(
+                        """
+                        MERGE INTO ANALYTICS.FCT_AGENT_SCHEDULE_ACTIONS AS tgt
+                        USING (
+                            SELECT
+                                %s AS action_id,
+                                TO_TIMESTAMP_NTZ(%s) AS created_at,
+                                TO_TIMESTAMP_NTZ(%s) AS executed_at,
+                                %s AS action_type,
+                                %s AS calendar_id,
+                                %s AS target_event_id,
+                                %s AS title,
+                                TO_TIMESTAMP_NTZ(%s) AS scheduled_start,
+                                TO_TIMESTAMP_NTZ(%s) AS scheduled_end,
+                                PARSE_JSON(%s) AS before_state_json,
+                                PARSE_JSON(%s) AS after_state_json,
+                                %s AS rationale,
+                                %s AS autonomy_tier,
+                                %s AS approval_status,
+                                %s AS undo_token
+                        ) AS src
+                        ON tgt.action_id = src.action_id
+                        WHEN MATCHED THEN UPDATE SET
+                            tgt.executed_at = src.executed_at,
+                            tgt.approval_status = src.approval_status,
+                            tgt.after_state_json = src.after_state_json
+                        WHEN NOT MATCHED THEN INSERT (
+                            action_id, created_at, executed_at, action_type, calendar_id,
+                            target_event_id, title, scheduled_start, scheduled_end,
+                            before_state_json, after_state_json, rationale, autonomy_tier,
+                            approval_status, undo_token
+                        ) VALUES (
+                            src.action_id, src.created_at, src.executed_at,
+                            src.action_type, src.calendar_id, src.target_event_id,
+                            src.title, src.scheduled_start, src.scheduled_end,
+                            src.before_state_json, src.after_state_json,
+                            src.rationale, src.autonomy_tier,
+                            src.approval_status, src.undo_token
+                        )
+                        """,
+                        [
+                            (
+                                str(a["action_id"])[:64],
+                                _to_snowflake_ntz(a.get("created_at")),
+                                _to_snowflake_ntz(a.get("executed_at"))
+                                if a.get("executed_at")
+                                else None,
+                                str(a["action_type"])[:32],
+                                str(a.get("calendar_id", "primary"))[:128],
+                                (
+                                    str(a.get("target_event_id"))[:128]
+                                    if a.get("target_event_id")
+                                    else None
+                                ),
+                                (str(a.get("title"))[:256] if a.get("title") else None),
+                                _to_snowflake_ntz(a.get("scheduled_start"))
+                                if a.get("scheduled_start")
+                                else None,
+                                _to_snowflake_ntz(a.get("scheduled_end"))
+                                if a.get("scheduled_end")
+                                else None,
+                                (
+                                    a["before_state_json"]
+                                    if isinstance(a.get("before_state_json"), str)
+                                    else json.dumps(a.get("before_state_json") or {}, default=str)
+                                ),
+                                (
+                                    a["after_state_json"]
+                                    if isinstance(a.get("after_state_json"), str)
+                                    else json.dumps(a.get("after_state_json") or {}, default=str)
+                                ),
+                                str(a.get("rationale") or "")[:512],
+                                str(a.get("autonomy_tier") or "TIER_1_AUTONOMOUS")[:16],
+                                str(a.get("approval_status") or "AUTO_APPROVED")[:24],
+                                (str(a.get("undo_token"))[:64] if a.get("undo_token") else None),
+                            )
+                            for a in agent_actions
+                        ],
+                    )
         finally:
             conn.close()
 
@@ -445,9 +527,15 @@ class BatchIngestor:
         sf_enabled = self._snowflake_ingest_configured()
         pending_decisions = self._store.list_unsynced_decisions() if sf_enabled else []
         pending_outcomes = self._store.list_unsynced_outcomes() if sf_enabled else []
+        pending_agent_actions = self._store.get_unsynced_agent_actions()
         target = "snowflake" if sf_enabled else "local_synthetic_csv"
 
-        if not pending and not pending_decisions and not pending_outcomes:
+        if (
+            not pending
+            and not pending_decisions
+            and not pending_outcomes
+            and not pending_agent_actions
+        ):
             return FlushResult(target_backend=target, flushed_count=0, by_domain={})
 
         grouped: dict[str, list[dict[str, Any]]] = {
@@ -464,8 +552,11 @@ class BatchIngestor:
 
         decisions_synced = 0
         outcomes_synced = 0
+        agent_actions_synced = 0
         if sf_enabled:
-            self._flush_to_snowflake(grouped, pending_decisions, pending_outcomes)
+            self._flush_to_snowflake(
+                grouped, pending_decisions, pending_outcomes, pending_agent_actions
+            )
             if pending_decisions:
                 decisions_synced = self._store.mark_decisions_synced(
                     [str(d["decision_id"]) for d in pending_decisions]
@@ -474,12 +565,39 @@ class BatchIngestor:
                 outcomes_synced = self._store.mark_outcomes_synced(
                     [str(o["outcome_id"]) for o in pending_outcomes]
                 )
+            if pending_agent_actions:
+                agent_actions_synced = self._store.mark_agent_actions_as_synced(
+                    [str(a["action_id"]) for a in pending_agent_actions]
+                )
         else:
             self._flush_to_local_csv(grouped)
+            if self._csv_repo and pending_agent_actions:
+                out = self._csv_repo.data_dir
+                _append_csv_rows(
+                    out / "agent_calendar_actions.csv",
+                    [
+                        "action_id",
+                        "created_at",
+                        "executed_at",
+                        "action_type",
+                        "calendar_id",
+                        "target_event_id",
+                        "title",
+                        "scheduled_start",
+                        "scheduled_end",
+                        "rationale",
+                        "autonomy_tier",
+                        "approval_status",
+                    ],
+                    pending_agent_actions,
+                )
+                agent_actions_synced = self._store.mark_agent_actions_as_synced(
+                    [str(a["action_id"]) for a in pending_agent_actions]
+                )
 
         if entry_ids:
             self._store.mark_ingest_events_synced(entry_ids)
-        if entry_ids or decisions_synced or outcomes_synced:
+        if entry_ids or decisions_synced or outcomes_synced or agent_actions_synced:
             self._store.clear_cache()
 
         return FlushResult(
@@ -488,4 +606,5 @@ class BatchIngestor:
             by_domain={k: len(v) for k, v in grouped.items() if v},
             decisions_synced=decisions_synced,
             outcomes_synced=outcomes_synced,
+            agent_actions_synced=agent_actions_synced,
         )

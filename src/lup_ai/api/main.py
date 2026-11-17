@@ -11,8 +11,15 @@ from fastapi import FastAPI, HTTPException, Query
 from pydantic import ValidationError
 
 from lup_ai import __version__
+from lup_ai.actuators.base import CalendarActuatorProtocol
+from lup_ai.actuators.google_calendar import GoogleCalendarActuator
+from lup_ai.agent.calendar_agent import CalendarAgent
 from lup_ai.agent.orchestrator import LupOrchestrator, build_default_repository
 from lup_ai.api.schemas import (
+    ActionApprovalRequest,
+    AgentActionSchema,
+    AgentCycleRequest,
+    AgentCycleResponse,
     AnomaliesResponse,
     AskRequest,
     AskResponse,
@@ -25,11 +32,13 @@ from lup_ai.api.schemas import (
     FlushResult,
     GoalSchema,
     HealthResponse,
+    OAuthTokenSaveRequest,
     OutcomesResponse,
     PendingIngestResponse,
     PreferenceSchema,
     ProactiveScanReport,
     ProactiveScanRequest,
+    ScheduleHealthSchema,
     SchedulerStatus,
     SimulatedSyncReport,
     SimulatedSyncRequest,
@@ -63,6 +72,8 @@ def create_app(
     store: LocalStore | None = None,
     repo: AnalyticsRepository | None = None,
     llm_client: LLMClient | None = None,
+    calendar_actuator: CalendarActuatorProtocol | None = None,
+    calendar_agent: CalendarAgent | None = None,
     enable_scheduler: bool | None = None,
 ) -> FastAPI:
     """Create FastAPI instance with injectable dependencies for testing and deployment."""
@@ -70,6 +81,12 @@ def create_app(
     local_store = store or LocalStore(cfg.lup_sqlite_path)
     active_repo = repo or build_default_repository(cfg)
     active_llm = llm_client or GeminiClient(cfg)
+    active_actuator = calendar_actuator or GoogleCalendarActuator(store=local_store, settings=cfg)
+    active_agent = calendar_agent or CalendarAgent(
+        store=local_store,
+        actuator=active_actuator,
+        settings=cfg,
+    )
     catalog = QueryCatalog(
         repo=active_repo,
         store=local_store,
@@ -97,6 +114,7 @@ def create_app(
         repo=active_repo,
         ingestor=ingestor,
         scanner=scanner,
+        calendar_agent=calendar_agent,
     )
     should_start_scheduler = (
         cfg.lup_scheduler_enabled if enable_scheduler is None else enable_scheduler
@@ -340,6 +358,84 @@ def create_app(
             auto_flush=req.auto_flush,
             sources=req.sources,
         )
+
+    # --- Autonomous Calendar Agent Endpoints ---
+
+    @api.get("/v1/agent/calendar/health", response_model=list[ScheduleHealthSchema])
+    def get_calendar_health(
+        days: int = Query(default=3, ge=1, le=14),
+    ) -> list[ScheduleHealthSchema]:
+        """Compute calendar schedule health, fragmentation index, and deep work deficit."""
+        reports = active_agent.evaluate_schedule_health(lookahead_days=days)
+        return [ScheduleHealthSchema(**asdict(r)) for r in reports]
+
+    @api.post("/v1/agent/calendar/cycle", response_model=AgentCycleResponse)
+    def run_calendar_cycle(
+        payload: AgentCycleRequest | None = None,
+    ) -> AgentCycleResponse:
+        """Run an autonomous calendar optimization cycle (Tier 1 defense + Tier 2 proposals)."""
+        req = payload or AgentCycleRequest()
+        result = active_agent.run_cycle(
+            lookahead_days=req.lookahead_days,
+            auto_execute_tier1=req.auto_execute_tier1,
+        )
+        return AgentCycleResponse(
+            cycle_timestamp=result.cycle_timestamp,
+            lookahead_days=result.lookahead_days,
+            health_reports=[ScheduleHealthSchema(**asdict(r)) for r in result.health_reports],
+            actions_executed=[AgentActionSchema(**asdict(a)) for a in result.actions_executed],
+            actions_proposed=[AgentActionSchema(**asdict(a)) for a in result.actions_proposed],
+        )
+
+    @api.get("/v1/agent/actions/pending", response_model=list[AgentActionSchema])
+    def list_pending_actions() -> list[AgentActionSchema]:
+        """List staged schedule mutation proposals awaiting 1-click human approval."""
+        rows = local_store.list_agent_actions(approval_status="PENDING_APPROVAL")
+        return [AgentActionSchema(**row) for row in rows]
+
+    @api.post("/v1/agent/actions/{action_id}/approve", response_model=AgentActionSchema)
+    def approve_action(
+        action_id: str,
+        payload: ActionApprovalRequest | None = None,
+    ) -> AgentActionSchema:
+        """Approve and execute a staged Tier 2 calendar mutation."""
+        notes = payload.reviewer_notes if payload else None
+        res = active_agent.approve_action(action_id=action_id, reviewer_notes=notes)
+        if not res:
+            raise HTTPException(status_code=404, detail=f"Action '{action_id}' not found.")
+        return AgentActionSchema(**asdict(res))
+
+    @api.post("/v1/agent/actions/{action_id}/reject", response_model=AgentActionSchema)
+    def reject_action(
+        action_id: str,
+        payload: ActionApprovalRequest | None = None,
+    ) -> AgentActionSchema:
+        """Reject a staged Tier 2 calendar proposal."""
+        notes = payload.reviewer_notes if payload else None
+        res = active_agent.reject_action(action_id=action_id, reviewer_notes=notes)
+        if not res:
+            raise HTTPException(status_code=404, detail=f"Action '{action_id}' not found.")
+        return AgentActionSchema(**asdict(res))
+
+    @api.post("/v1/agent/actions/{action_id}/undo", response_model=AgentActionSchema)
+    def undo_action(action_id: str) -> AgentActionSchema:
+        """Rollback an executed calendar mutation using its pre-mutation snapshot."""
+        res = active_agent.undo_action(action_id=action_id)
+        if not res:
+            raise HTTPException(
+                status_code=404, detail=f"Action '{action_id}' cannot be undone or not found."
+            )
+        return AgentActionSchema(**asdict(res))
+
+    @api.post("/v1/agent/oauth/token")
+    def save_oauth_token(payload: OAuthTokenSaveRequest) -> dict[str, str]:
+        """Store encrypted OAuth credentials for calendar actuator."""
+        local_store.save_oauth_token(
+            provider=payload.provider,
+            token_data=payload.token_payload,
+            secret_key=cfg.lup_secret_key,
+        )
+        return {"status": "saved", "provider": payload.provider}
 
     return api
 

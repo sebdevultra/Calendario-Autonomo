@@ -52,6 +52,16 @@ class Settings(BaseSettings):
     lup_batch_flush_interval_minutes: int = Field(default=60, ge=1, le=1440)
     lup_proactive_scan_lookback_days: int = Field(default=90, ge=14, le=365)
 
+    # Calendar Autonomous Agent Settings
+    lup_secret_key: str = "lup-default-fernet-secret-encryption-key-32b"
+    google_calendar_credentials_path: str = "./credentials.json"
+    google_calendar_id: str = "primary"
+    calendar_agent_enabled: bool = True
+    calendar_agent_cron_hours: str = "7,18"
+    calendar_agent_min_deep_work_hours: float = 3.0
+    calendar_agent_work_start_hour: int = 8
+    calendar_agent_work_end_hour: int = 18
+
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:

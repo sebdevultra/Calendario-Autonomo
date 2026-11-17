@@ -12,6 +12,8 @@ from zoneinfo import ZoneInfo
 from apscheduler.schedulers.background import BackgroundScheduler
 from pydantic import BaseModel, Field
 
+from lup_ai.actuators.google_calendar import GoogleCalendarActuator
+from lup_ai.agent.calendar_agent import CalendarAgent, CalendarAgentCycleResult
 from lup_ai.config.settings import Settings, get_settings
 from lup_ai.data.batch_ingestor import BatchIngestor, FlushResult
 from lup_ai.data.local_csv_repo import LocalCsvAnalyticsRepository
@@ -42,6 +44,7 @@ class SchedulerStatus(BaseModel):
     jobs: list[ScheduledJobInfo] = Field(default_factory=list)
     last_scan_at: str | None = None
     last_flush_at: str | None = None
+    last_calendar_cycle_at: str | None = None
     last_error: str | None = None
 
 
@@ -55,6 +58,7 @@ class LupScheduler:
         repo: AnalyticsRepository,
         ingestor: BatchIngestor | None = None,
         scanner: ProactiveScanner | None = None,
+        calendar_agent: CalendarAgent | None = None,
     ) -> None:
         self._settings = settings
         self._store = store
@@ -65,9 +69,11 @@ class LupScheduler:
             local_csv_repo=(repo if isinstance(repo, LocalCsvAnalyticsRepository) else None),
         )
         self._scanner = scanner or ProactiveScanner(store=store, repo=repo)
+        self._calendar_agent = calendar_agent
         self._scheduler = BackgroundScheduler(timezone=ZoneInfo(settings.lup_timezone))
         self._last_scan_at: str | None = None
         self._last_flush_at: str | None = None
+        self._last_calendar_cycle_at: str | None = None
         self._last_error: str | None = None
 
     @property
@@ -112,10 +118,35 @@ class LupScheduler:
             _LOGGER.warning("Scheduled batch flush failed: %s", self._last_error)
             return None
 
+    def run_calendar_agent_job(
+        self, lookahead_days: int = 3, auto_execute_tier1: bool = True
+    ) -> CalendarAgentCycleResult | None:
+        """Run a scheduled calendar agent autonomous cycle without crashing."""
+        if not self._calendar_agent:
+            return None
+        try:
+            res = self._calendar_agent.run_cycle(
+                lookahead_days=lookahead_days,
+                auto_execute_tier1=auto_execute_tier1,
+            )
+            self._last_calendar_cycle_at = datetime.now(UTC).isoformat()
+            _LOGGER.info(
+                "Scheduled calendar agent cycle completed: executed=%d proposed=%d",
+                len(res.actions_executed),
+                len(res.actions_proposed),
+            )
+            return res
+        except Exception as exc:
+            self._last_error = f"calendar_agent: {type(exc).__name__}: {exc}"
+            _LOGGER.warning("Scheduled calendar agent cycle failed: %s", self._last_error)
+            return None
+
     def run_cycle_once(self) -> tuple[ProactiveScanReport | None, FlushResult | None]:
         """Execute one immediate scan + flush cycle synchronously."""
         scan_report = self.run_proactive_scan_job()
         flush_result = self.run_batch_flush_job()
+        if self._calendar_agent:
+            self.run_calendar_agent_job()
         return scan_report, flush_result
 
     def start(self) -> bool:
@@ -143,6 +174,18 @@ class LupScheduler:
             max_instances=1,
             replace_existing=True,
         )
+        if self._settings.calendar_agent_enabled and self._calendar_agent:
+            self._scheduler.add_job(
+                self.run_calendar_agent_job,
+                trigger="cron",
+                hour=self._settings.calendar_agent_cron_hours,
+                minute="0",
+                id="calendar_agent_job",
+                name="Autonomous calendar focus defense & proposal cycle",
+                coalesce=True,
+                max_instances=1,
+                replace_existing=True,
+            )
         self._scheduler.start()
         return True
 
@@ -170,6 +213,7 @@ class LupScheduler:
             jobs=jobs,
             last_scan_at=self._last_scan_at,
             last_flush_at=self._last_flush_at,
+            last_calendar_cycle_at=self._last_calendar_cycle_at,
             last_error=self._last_error,
         )
 
@@ -182,7 +226,9 @@ def _build_default_scheduler(settings: Settings, data_dir: Path | None = None) -
         if sf_repo.is_configured()
         else LocalCsvAnalyticsRepository(data_dir or Path("data/generated"))
     )
-    return LupScheduler(settings=settings, store=store, repo=repo)
+    actuator = GoogleCalendarActuator(store=store, settings=settings)
+    agent = CalendarAgent(store=store, actuator=actuator, settings=settings)
+    return LupScheduler(settings=settings, store=store, repo=repo, calendar_agent=agent)
 
 
 def main() -> None:

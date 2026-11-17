@@ -93,11 +93,11 @@ def test_bootstrap_snowflake_runs_ddls_uploads_and_verifies_counts(tmp_path: Pat
         connector_factory=lambda _cfg: fake_conn,
     )
 
-    assert report.ddl_scripts_executed == 5
+    assert report.ddl_scripts_executed == 6
     assert len(report.files_uploaded) == 3
     assert report.cross_domain_rows == 180
     assert report.goals_rows == 4
-    assert len(fake_conn.strings) == 6
+    assert len(fake_conn.strings) == 7
     assert any("PUT 'file://" in stmt for stmt in fake_conn.statements)
     assert any("ALTER DYNAMIC TABLE" in stmt for stmt in fake_conn.statements)
     assert fake_conn.closed is True
