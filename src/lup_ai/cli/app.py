@@ -752,5 +752,54 @@ def agent_undo(
     )
 
 
+@agent_app.command("login")
+def agent_login(
+    credentials_path: str = typer.Option(
+        "./credentials.json", help="Ruta al archivo JSON de credenciales OAuth de Google."
+    ),
+) -> None:
+    """Autenticación interactiva con Google Calendar mediante OAuth 2.0."""
+    from pathlib import Path
+
+    settings = get_settings()
+    store = LocalStore(settings.lup_sqlite_path)
+
+    creds_file = Path(credentials_path)
+    if not creds_file.exists():
+        console.print(
+            f"[red]Error: Archivo de credenciales no encontrado en '{creds_file.resolve()}'.[/red]\n"
+            "[yellow]Descarga tu archivo OAuth 2.0 Client ID (tipo 'Desktop App') desde Google Cloud Console "
+            "y guárdalo como 'credentials.json' en la raíz del proyecto.[/yellow]"
+        )
+        raise typer.Exit(code=1)
+
+    try:
+        from google_auth_oauthlib.flow import InstalledAppFlow
+
+        scopes = [
+            "https://www.googleapis.com/auth/calendar.events",
+            "https://www.googleapis.com/auth/calendar.readonly",
+        ]
+        flow = InstalledAppFlow.from_client_secrets_file(str(creds_file), scopes=scopes)
+        console.print("[cyan]Abriendo navegador para iniciar sesión en Google Calendar...[/cyan]")
+        creds = flow.run_local_server(port=0)
+
+        token_payload = {
+            "token": creds.token,
+            "refresh_token": creds.refresh_token,
+            "token_uri": creds.token_uri,
+            "client_id": creds.client_id,
+            "client_secret": creds.client_secret,
+            "scopes": list(creds.scopes) if creds.scopes else scopes,
+        }
+        store.save_oauth_token("google_calendar", token_payload, settings.lup_secret_key)
+        console.print(
+            "[bold green]¡Autenticación completada con éxito! Token cifrado con Fernet y guardado en SQLite.[/bold green]"
+        )
+    except Exception as exc:
+        console.print(f"[red]Error durante el flujo OAuth: {exc}[/red]")
+        raise typer.Exit(code=1)
+
+
 if __name__ == "__main__":
     app()
