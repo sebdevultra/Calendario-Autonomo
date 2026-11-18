@@ -14,6 +14,7 @@ ALLOWED_SEMANTIC_VIEWS: frozenset[str] = frozenset(
         "VW_TIME_CALENDAR_SUMMARY",
         "VW_CROSS_DOMAIN_DAILY",
         "VW_GOAL_PROGRESS",
+        "VW_AGENT_SCHEDULE_ACTIONS",
     }
 )
 

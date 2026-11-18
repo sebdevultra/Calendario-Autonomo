@@ -29,6 +29,7 @@ logs/
 
 # Test and tooling caches
 .pytest_cache/
+.pytest_temp/
 .ruff_cache/
 .mypy_cache/
 .coverage

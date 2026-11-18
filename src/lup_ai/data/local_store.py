@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import base64
+import hashlib
 import json
 import sqlite3
+import uuid
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
+
+from cryptography.fernet import Fernet
 
 
 class LocalStore:
@@ -131,6 +136,31 @@ class LocalStore:
                     created_at TEXT NOT NULL,
                     synced_at TEXT,
                     sync_status TEXT NOT NULL DEFAULT 'pending'
+                );
+
+                CREATE TABLE IF NOT EXISTS oauth_credentials (
+                    provider TEXT PRIMARY KEY,
+                    encrypted_token TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
+
+                CREATE TABLE IF NOT EXISTS agent_schedule_actions (
+                    action_id TEXT PRIMARY KEY,
+                    created_at TEXT NOT NULL,
+                    executed_at TEXT,
+                    action_type TEXT NOT NULL,
+                    calendar_id TEXT NOT NULL DEFAULT 'primary',
+                    target_event_id TEXT,
+                    title TEXT,
+                    scheduled_start TEXT,
+                    scheduled_end TEXT,
+                    before_state_json TEXT,
+                    after_state_json TEXT,
+                    rationale TEXT NOT NULL,
+                    autonomy_tier TEXT NOT NULL,
+                    approval_status TEXT NOT NULL DEFAULT 'AUTO_APPROVED',
+                    undo_token TEXT,
+                    synced_to_snowflake INTEGER NOT NULL DEFAULT 0
                 );
                 """
             )
@@ -638,3 +668,195 @@ class LocalStore:
     def mark_outcomes_synced(self, outcome_ids: list[str]) -> int:
         """Mark decision_outcomes rows as replicated to Snowflake."""
         return self._mark_table_synced_to_snowflake("decision_outcomes", "outcome_id", outcome_ids)
+
+    @staticmethod
+    def _derive_fernet_key(secret_key: str | None) -> bytes:
+        raw_key = (secret_key or "lup-default-local-fernet-secret-32b").encode("utf-8")
+        return base64.urlsafe_b64encode(hashlib.sha256(raw_key).digest())
+
+    def save_oauth_token(
+        self,
+        provider: str,
+        token_data: dict[str, Any] | None = None,
+        secret_key: str | None = None,
+        token_payload: dict[str, Any] | None = None,
+    ) -> None:
+        """Encrypt and store OAuth tokens in SQLite."""
+        eff_token = token_data if token_data is not None else token_payload or {}
+        fernet = Fernet(self._derive_fernet_key(secret_key))
+        token_bytes = json.dumps(eff_token, default=str).encode("utf-8")
+        encrypted = fernet.encrypt(token_bytes).decode("utf-8")
+        now_iso = self._utc_now().isoformat()
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO oauth_credentials (provider, encrypted_token, updated_at)
+                VALUES (?, ?, ?)
+                ON CONFLICT(provider) DO UPDATE SET
+                    encrypted_token = excluded.encrypted_token,
+                    updated_at = excluded.updated_at
+                """,
+                (provider, encrypted, now_iso),
+            )
+
+    def load_oauth_token(
+        self, provider: str, secret_key: str | None = None
+    ) -> dict[str, Any] | None:
+        """Retrieve and decrypt OAuth tokens from SQLite."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT encrypted_token FROM oauth_credentials WHERE provider = ?",
+                (provider,),
+            ).fetchone()
+            if row is None:
+                return None
+            encrypted = row["encrypted_token"]
+            try:
+                fernet = Fernet(self._derive_fernet_key(secret_key))
+                decrypted = fernet.decrypt(encrypted.encode("utf-8")).decode("utf-8")
+                return json.loads(decrypted)
+            except Exception:
+                return None
+
+    def delete_oauth_token(self, provider: str) -> bool:
+        """Remove OAuth credentials for a provider."""
+        with self._connect() as conn:
+            cur = conn.execute("DELETE FROM oauth_credentials WHERE provider = ?", (provider,))
+            return bool(cur.rowcount > 0)
+
+    def record_agent_action(self, action: dict[str, Any]) -> dict[str, Any]:
+        """Record an autonomous or pending agent schedule action."""
+        now_iso = self._utc_now().isoformat()
+        action_id = action.get("action_id") or f"act_{uuid.uuid4().hex[:12]}"
+        record = {
+            "action_id": action_id,
+            "created_at": action.get("created_at") or now_iso,
+            "executed_at": action.get("executed_at"),
+            "action_type": str(action["action_type"]),
+            "calendar_id": str(action.get("calendar_id", "primary")),
+            "target_event_id": str(action.get("target_event_id") or ""),
+            "title": str(action.get("title") or ""),
+            "scheduled_start": str(action.get("scheduled_start") or ""),
+            "scheduled_end": str(action.get("scheduled_end") or ""),
+            "before_state_json": (
+                json.dumps(action["before_state_json"], default=str)
+                if isinstance(action.get("before_state_json"), (dict, list))
+                else str(action.get("before_state_json") or "{}")
+            ),
+            "after_state_json": (
+                json.dumps(action["after_state_json"], default=str)
+                if isinstance(action.get("after_state_json"), (dict, list))
+                else str(action.get("after_state_json") or "{}")
+            ),
+            "rationale": str(action.get("rationale") or "")[:512],
+            "autonomy_tier": str(action.get("autonomy_tier", "TIER_1_AUTONOMOUS")),
+            "approval_status": str(action.get("approval_status", "AUTO_APPROVED")),
+            "undo_token": str(action.get("undo_token") or action_id),
+            "synced_to_snowflake": 0,
+        }
+        with self._connect() as conn:
+            conn.execute(
+                """
+                INSERT INTO agent_schedule_actions (
+                    action_id, created_at, executed_at, action_type, calendar_id,
+                    target_event_id, title, scheduled_start, scheduled_end,
+                    before_state_json, after_state_json, rationale, autonomy_tier,
+                    approval_status, undo_token, synced_to_snowflake
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ON CONFLICT(action_id) DO UPDATE SET
+                    executed_at = excluded.executed_at,
+                    approval_status = excluded.approval_status,
+                    after_state_json = excluded.after_state_json
+                """,
+                (
+                    record["action_id"],
+                    record["created_at"],
+                    record["executed_at"],
+                    record["action_type"],
+                    record["calendar_id"],
+                    record["target_event_id"],
+                    record["title"],
+                    record["scheduled_start"],
+                    record["scheduled_end"],
+                    record["before_state_json"],
+                    record["after_state_json"],
+                    record["rationale"],
+                    record["autonomy_tier"],
+                    record["approval_status"],
+                    record["undo_token"],
+                    0,
+                ),
+            )
+        return record
+
+    def get_agent_action(self, action_id: str) -> dict[str, Any] | None:
+        """Fetch an action by ID."""
+        with self._connect() as conn:
+            row = conn.execute(
+                "SELECT * FROM agent_schedule_actions WHERE action_id = ?",
+                (action_id,),
+            ).fetchone()
+            return dict(row) if row is not None else None
+
+    def list_agent_actions(
+        self,
+        limit: int = 100,
+        status: str | None = None,
+        approval_status: str | None = None,
+    ) -> list[dict[str, Any]]:
+        """List recent agent schedule actions."""
+        target_status = approval_status if approval_status is not None else status
+        with self._connect() as conn:
+            if target_status is not None:
+                rows = conn.execute(
+                    """
+                    SELECT * FROM agent_schedule_actions
+                    WHERE approval_status = ?
+                    ORDER BY created_at DESC
+                    LIMIT ?
+                    """,
+                    (target_status, limit),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT * FROM agent_schedule_actions ORDER BY created_at DESC LIMIT ?",
+                    (limit,),
+                ).fetchall()
+            return [dict(r) for r in rows]
+
+    def update_agent_action_status(
+        self, action_id: str, approval_status: str, executed_at: str | None = None
+    ) -> bool:
+        """Update approval status (APPROVED, REJECTED, ROLLED_BACK)."""
+        now_iso = self._utc_now().isoformat()
+        with self._connect() as conn:
+            cur = conn.execute(
+                """
+                UPDATE agent_schedule_actions
+                SET approval_status = ?,
+                    executed_at = COALESCE(?, executed_at)
+                WHERE action_id = ?
+                """,
+                (approval_status, executed_at or now_iso, action_id),
+            )
+            return bool(cur.rowcount > 0)
+
+    def get_unsynced_agent_actions(self, limit: int = 200) -> list[dict[str, Any]]:
+        """List local agent actions not yet replicated to Snowflake."""
+        with self._connect() as conn:
+            rows = conn.execute(
+                """
+                SELECT * FROM agent_schedule_actions
+                WHERE synced_to_snowflake = 0
+                ORDER BY created_at ASC
+                LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+            return [dict(r) for r in rows]
+
+    def mark_agent_actions_as_synced(self, action_ids: list[str]) -> int:
+        """Mark agent_schedule_actions as synced to Snowflake."""
+        return self._mark_table_synced_to_snowflake(
+            "agent_schedule_actions", "action_id", action_ids
+        )

@@ -186,9 +186,80 @@ class SimulatedSyncRequest(BaseModel):
     sources: list[Literal["finance", "habits_sleep", "time_calendar"]] | None = None
 
 
+class ScheduleHealthSchema(BaseModel):
+    """Quantitative diagnostics of schedule balance, fragmentation, and focus availability."""
+
+    date_evaluated: str
+    total_scheduled_hours: float
+    meeting_hours: float
+    deep_work_hours: float
+    free_hours: float
+    fragmentation_index: float
+    deep_work_deficit: bool
+    meeting_overload: bool
+    events_count: int
+    open_focus_slots_count: int
+
+
+class AgentActionSchema(BaseModel):
+    """Lifecycle record of an autonomous or staged agent schedule mutation."""
+
+    action_id: str
+    action_type: str
+    autonomy_tier: str
+    approval_status: str
+    calendar_id: str = "primary"
+    target_event_id: str | None = None
+    title: str | None = None
+    scheduled_start: str | None = None
+    scheduled_end: str | None = None
+    rationale: str
+    undo_token: str | None = None
+    success: bool = True
+    created_at: str | None = None
+    executed_at: str | None = None
+    before_state_json: str | None = None
+    after_state_json: str | None = None
+    error_message: str | None = None
+
+
+class AgentCycleRequest(BaseModel):
+    """Parameters for running an autonomous calendar cycle."""
+
+    lookahead_days: int = Field(default=3, ge=1, le=14)
+    auto_execute_tier1: bool = True
+
+
+class AgentCycleResponse(BaseModel):
+    """Results of an autonomous calendar cycle with health metrics and executed/staged actions."""
+
+    cycle_timestamp: str
+    lookahead_days: int
+    health_reports: list[ScheduleHealthSchema]
+    actions_executed: list[AgentActionSchema]
+    actions_proposed: list[AgentActionSchema]
+
+
+class ActionApprovalRequest(BaseModel):
+    """Human-in-the-loop review notes for approving or rejecting an action."""
+
+    reviewer_notes: str | None = Field(default=None, max_length=500)
+
+
+class OAuthTokenSaveRequest(BaseModel):
+    """Payload to persist encrypted OAuth credentials."""
+
+    provider: str = Field(default="google_calendar", max_length=64)
+    token_payload: dict[str, Any]
+
+
 from lup_ai.jobs.scheduler import SchedulerStatus  # noqa: E402
 
 __all__ = [
+    "ActionApprovalRequest",
+    "AgentActionSchema",
+    "AgentCycleRequest",
+    "AgentCycleResponse",
     "AnomaliesResponse",
     "AskRequest",
     "AskResponse",
@@ -201,11 +272,13 @@ __all__ = [
     "FlushResult",
     "GoalSchema",
     "HealthResponse",
+    "OAuthTokenSaveRequest",
     "OutcomesResponse",
     "PendingIngestResponse",
     "PreferenceSchema",
     "ProactiveScanReport",
     "ProactiveScanRequest",
+    "ScheduleHealthSchema",
     "SchedulerStatus",
     "SimulateRequest",
     "SimulateResponse",

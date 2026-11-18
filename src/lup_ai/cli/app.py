@@ -14,6 +14,8 @@ from rich.panel import Panel
 from rich.table import Table
 
 from lup_ai import __version__
+from lup_ai.actuators.google_calendar import GoogleCalendarActuator
+from lup_ai.agent.calendar_agent import CalendarAgent
 from lup_ai.agent.orchestrator import LupOrchestrator, build_default_repository
 from lup_ai.config.settings import get_settings
 from lup_ai.connectors.simulated_sources import SimulatedConnectorHub
@@ -35,6 +37,8 @@ from lup_ai.memory.decision_tracker import DecisionTracker
 from lup_ai.seeds.bootstrap_snowflake import bootstrap_snowflake
 
 app = typer.Typer(help="LUP AI Personal Decision Intelligence CLI.")
+agent_app = typer.Typer(help="Autonomous Calendar Agent commands.")
+app.add_typer(agent_app, name="agent")
 console = Console()
 
 
@@ -567,6 +571,185 @@ def serve(
 ) -> None:
     """Start the FastAPI REST server."""
     uvicorn.run("lup_ai.api.main:app", host=host, port=port, reload=False)
+
+
+# --- Autonomous Calendar Agent CLI Commands ---
+
+
+def _get_calendar_agent() -> tuple[CalendarAgent, LocalStore]:
+    settings = get_settings()
+    store = LocalStore(settings.lup_sqlite_path)
+    actuator = GoogleCalendarActuator(store=store, settings=settings)
+    agent = CalendarAgent(store=store, actuator=actuator, settings=settings)
+    return agent, store
+
+
+@agent_app.command("health")
+def agent_health(
+    days: int = typer.Option(3, min=1, max=14, help="Lookahead window in days."),
+) -> None:
+    """Evaluate schedule health, focus deficit, and fragmentation index."""
+    agent, _ = _get_calendar_agent()
+    reports = agent.evaluate_schedule_health(lookahead_days=days)
+
+    table = Table(title=f"Diagnóstico de Salud de Agenda ({days} días)")
+    table.add_column("Fecha", style="cyan")
+    table.add_column("Programadas (h)", justify="right")
+    table.add_column("Reuniones (h)", justify="right")
+    table.add_column("Deep Work (h)", justify="right")
+    table.add_column("Libre (h)", justify="right")
+    table.add_column("Fragmentación", justify="right")
+    table.add_column("Déficit Foco", style="bold red")
+    table.add_column("Sobrecarga", style="bold yellow")
+
+    for r in reports:
+        table.add_row(
+            r.date_evaluated,
+            f"{r.total_scheduled_hours:.1f}",
+            f"{r.meeting_hours:.1f}",
+            f"{r.deep_work_hours:.1f}",
+            f"{r.free_hours:.1f}",
+            f"{r.fragmentation_index:.2f}",
+            "SÍ" if r.deep_work_deficit else "NO",
+            "SÍ" if r.meeting_overload else "NO",
+        )
+    console.print(table)
+
+
+@agent_app.command("run")
+def agent_run(
+    days: int = typer.Option(3, min=1, max=14, help="Lookahead window in days."),
+    auto_execute: bool = typer.Option(
+        True, "--auto/--dry-run", help="Auto-execute Tier 1 focus blocks."
+    ),
+) -> None:
+    """Run autonomous calendar optimization cycle (Tier 1 defense + Tier 2 proposals)."""
+    agent, _ = _get_calendar_agent()
+    res = agent.run_cycle(lookahead_days=days, auto_execute_tier1=auto_execute)
+
+    console.print(
+        Panel.fit(
+            f"[bold green]Ciclo Autónomo Completado[/bold green]\n"
+            f"Timestamp: {res.cycle_timestamp}\n"
+            f"Días evaluados: {res.lookahead_days}\n"
+            f"Acciones ejecutadas (Tier 1): [cyan]{len(res.actions_executed)}[/cyan]\n"
+            f"Acciones propuestas (Tier 2): [yellow]{len(res.actions_proposed)}[/yellow]",
+            title="LUP AI - Calendar Agent Cycle",
+        )
+    )
+
+    if res.actions_executed:
+        t_exec = Table(title="Acciones Autónomas Ejecutadas (Tier 1)")
+        t_exec.add_column("ID", style="dim")
+        t_exec.add_column("Tipo")
+        t_exec.add_column("Título")
+        t_exec.add_column("Horario")
+        t_exec.add_column("Estado", style="green")
+        for a in res.actions_executed:
+            t_exec.add_row(
+                a.action_id[:8],
+                a.action_type.value,
+                a.title,
+                f"{a.scheduled_start} -> {a.scheduled_end}",
+                a.approval_status.value,
+            )
+        console.print(t_exec)
+
+    if res.actions_proposed:
+        t_prop = Table(title="Propuestas Esperando Aprobación (Tier 2)")
+        t_prop.add_column("ID", style="bold yellow")
+        t_prop.add_column("Tipo")
+        t_prop.add_column("Título")
+        t_prop.add_column("Razón")
+        t_prop.add_column("Aprobación", style="yellow")
+        for a in res.actions_proposed:
+            t_prop.add_row(
+                a.action_id,
+                a.action_type.value,
+                a.title,
+                a.rationale,
+                a.approval_status.value,
+            )
+        console.print(t_prop)
+        console.print("\n[dim]Para aprobar una propuesta: lup agent approve <action_id>[/dim]")
+
+
+@agent_app.command("pending")
+def agent_pending() -> None:
+    """List staged actions awaiting 1-click human approval."""
+    _, store = _get_calendar_agent()
+    pending = store.list_agent_actions(approval_status="PENDING_APPROVAL")
+
+    if not pending:
+        console.print("[green]No hay acciones pendientes de aprobación.[/green]")
+        return
+
+    table = Table(title="Acciones Pendientes de Aprobación")
+    table.add_column("Action ID", style="bold yellow")
+    table.add_column("Tier")
+    table.add_column("Tipo")
+    table.add_column("Título")
+    table.add_column("Razonamiento")
+    table.add_column("Creada")
+
+    for a in pending:
+        table.add_row(
+            a["action_id"],
+            str(a.get("autonomy_tier", "")),
+            str(a["action_type"]),
+            str(a.get("title", "")),
+            str(a.get("rationale", "")),
+            str(a["created_at"]),
+        )
+    console.print(table)
+    console.print("\n[dim]Usa 'lup agent approve <id>' o 'lup agent reject <id>'[/dim]")
+
+
+@agent_app.command("approve")
+def agent_approve(
+    action_id: str = typer.Argument(..., help="Action ID to approve."),
+    notes: str = typer.Option("", help="Optional approval notes."),
+) -> None:
+    """Approve and execute a staged Tier 2 calendar mutation."""
+    agent, _ = _get_calendar_agent()
+    res = agent.approve_action(action_id=action_id, reviewer_notes=notes or None)
+    if not res:
+        console.print(f"[red]Error: Acción '{action_id}' no encontrada.[/red]")
+        raise typer.Exit(code=1)
+    status_str = res.approval_status.value
+    console.print(
+        f"[green]Acción '{action_id}' aprobada y ejecutada (status: {status_str}).[/green]"
+    )
+
+
+@agent_app.command("reject")
+def agent_reject(
+    action_id: str = typer.Argument(..., help="Action ID to reject."),
+    notes: str = typer.Option("", help="Optional rejection reason."),
+) -> None:
+    """Reject a staged Tier 2 calendar mutation."""
+    agent, _ = _get_calendar_agent()
+    res = agent.reject_action(action_id=action_id, reviewer_notes=notes or None)
+    if not res:
+        console.print(f"[red]Error: Acción '{action_id}' no encontrada.[/red]")
+        raise typer.Exit(code=1)
+    console.print(f"[yellow]Acción '{action_id}' rechazada.[/yellow]")
+
+
+@agent_app.command("undo")
+def agent_undo(
+    action_id: str = typer.Argument(..., help="Action ID to rollback."),
+) -> None:
+    """Rollback an executed calendar mutation using its pre-state snapshot."""
+    agent, _ = _get_calendar_agent()
+    res = agent.undo_action(action_id=action_id)
+    if not res:
+        console.print(f"[red]Error: No se pudo revertir la acción '{action_id}'.[/red]")
+        raise typer.Exit(code=1)
+    status_str = res.approval_status.value
+    console.print(
+        f"[green]Acción '{action_id}' revertida exitosamente (status: {status_str}).[/green]"
+    )
 
 
 if __name__ == "__main__":

@@ -20,6 +20,7 @@ _DDL_FILES: tuple[str, ...] = (
     "03_core_models.sql",
     "04_analytics_dynamic_tables.sql",
     "05_semantic_views.sql",
+    "06_agent_calendar_actions.sql",
 )
 
 
