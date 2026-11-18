@@ -67,7 +67,7 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-q"
+addopts = "-q --basetemp=.pytest_temp"
 asyncio_default_fixture_loop_scope = "function"
 
 [tool.ruff]
